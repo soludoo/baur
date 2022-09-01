@@ -4,3 +4,5 @@
 
 from . import res_partner
 from . import res_company
+from . import sale
+from . import sale_report

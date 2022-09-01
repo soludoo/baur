@@ -17,6 +17,7 @@
         'wizard/qr_code_scan_to_invoice.xml',
         'views/view_res_partner.xml',
         'views/view_res_company.xml',
+        'views/sale.xml',
         'security/ir.model.access.csv',
 
     ],

@@ -12,6 +12,7 @@
     'depends': ['sale_management'],
     'data': [
         'security/ir.model.access.csv',
+        'views/report_templates.xml',
         'views/product_template.xml',
         'views/account_move.xml',
         'views/sale.xml',

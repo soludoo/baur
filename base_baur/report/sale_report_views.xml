@@ -3,7 +3,7 @@
     <data>
         <template id="base_baur_report_saleorder_document" inherit_id="sale.report_saleorder_document">
                 <xpath expr="//t[@t-set='address']" position="replace">
-                    <div class="row address" style="margin-top:90px;">
+                    <div class="row address">
                         <div class="col-4"><img class="img-fluid" src="/base_baur/static/description/icon.png" style="width:100px;" /></div>
                         <div class="col-4" style="line-height: 1.2;"><span>
                                 <p><span style="font-weight:bold;">BAUR Insektenschutz AG</span><br />Eichenweg 11<br />3628 Uttigen<br /></p>
@@ -12,8 +12,8 @@
                             <p>Tel.        033 345 07 77<br />Mail       info@baur-uttigen.ch<br />Web      www.baur-uttigen.ch<br />MWST  CHE-279.642.932 MWST</p>
                         </div>
                     </div>
-                    <br />
-                    <br />
+                    <!-- <br />
+                    <br /> -->
                     <div class="row address">
                         <div class="col-3" style="line-height: 1.2;font-family: Roboto; font-size: 12px;">
                             <t t-if="doc.x_studio_rechnungsadresse_drucken and doc.partner_invoice_id">

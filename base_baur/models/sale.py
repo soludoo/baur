@@ -3,94 +3,94 @@
 
 from datetime import timedelta
 
-from odoo import fields, models, api
+from odoo import _, fields, models, api
+from odoo.fields import Command
+from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 from odoo.tools import format_date, formatLang, frozendict
-from odoo.exceptions import ValidationError
-
 from odoo.tools import is_html_empty
-
 
 class AccountPaymentTerm(models.Model):
     _inherit = "account.payment.term"
 
-    # def _default_example_amount(self):
-    #     invoice = self.env['account.move'].search([('id', '=', self._context.get('invoice_id'))])
-    #     return invoice.amount_total or 100  # Force default value if the context is set to False
+    def _default_example_amount(self):
+        invoice = self.env['account.move'].search([('id', '=', self._context.get('invoice_id'))])
+        return invoice.amount_total or 100  # Force default value if the context is set to False
 
-    # def _default_example_date(self):
-    #     return self._context.get('example_date') or fields.Date.today()
+    def _default_example_date(self):
+        return self._context.get('example_date') or fields.Date.today()
 
-    # display_terms = fields.Boolean(string="Display terms on invoice")
-    # example_amount = fields.Float(default=_default_example_amount, store=False)
-    # example_date = fields.Date(string='Date example', default=_default_example_date, store=False)
-    # example_invalid = fields.Boolean(compute='_compute_example_invalid')
-    # example_preview = fields.Html(compute='_compute_example_preview')
+    display_terms = fields.Boolean(string="Display terms on invoice")
+    example_amount = fields.Float(default=_default_example_amount, store=False)
+    example_date = fields.Date(string='Date example', default=_default_example_date, store=False)
+    example_invalid = fields.Boolean(compute='_compute_example_invalid')
+    example_preview = fields.Html(compute='_compute_example_preview')
 
     @api.depends('line_ids')
     def _compute_example_invalid(self):
         for payment_term in self:
             payment_term.example_invalid = len(payment_term.line_ids.filtered(lambda l: l.value == 'balance')) != 1
 
-    # @api.depends('example_amount', 'example_date', 'line_ids.value', 'line_ids.value_amount')
-    # def _compute_example_preview(self):
-    #     for record in self:
-    #         example_preview = ""
-    #         if not record.example_invalid:
-    #             currency = self.env.company.currency_id
-    #             terms = record._compute_terms(
-    #                 date_ref=record.example_date,
-    #                 currency=currency,
-    #                 company=self.env.company,
-    #                 tax_amount=0,
-    #                 tax_amount_currency=0,
-    #                 untaxed_amount=record.example_amount,
-    #                 untaxed_amount_currency=record.example_amount,
-    #                 sign=1)
-    #             for i, info_by_dates in enumerate(record._get_amount_by_date(terms, currency).values()):
-    #                 date = info_by_dates['date']
-    #                 discount_date = info_by_dates['discount_date']
-    #                 amount = info_by_dates['amount']
-    #                 discount_amount = info_by_dates['discounted_amount'] or 0.0
-    #                 example_preview += f"""
-    #                     <div style='margin-left: 20px;'>
-    #                         <b>{i+1}#</b>
-    #                         Installment of
-    #                         <b>{formatLang(self.env, amount, monetary=True, currency_obj=currency)}</b>
-    #                         on 
-    #                         <b style='color: #704A66;'>{date}</b>
-    #                 """
-    #                 if discount_date:
-    #                     example_preview += f"""
-    #                      (<b>{formatLang(self.env, discount_amount, monetary=True, currency_obj=currency)}</b> if paid before <b>{format_date(self.env, terms[i].get('discount_date'))}</b>)
-    #                 """
-    #                 example_preview += "</div>"
+    @api.depends('example_amount', 'example_date', 'line_ids.value', 'line_ids.value_amount')
+    def _compute_example_preview(self):
+        for record in self:
+            example_preview = ""
+            if not record.example_invalid:
+                currency = self.env.company.currency_id
+                breakpoint()
+                terms = record._compute_terms(
+                    date_ref=record.example_date,
+                    currency=currency,
+                    company=self.env.company,
+                    tax_amount=0,
+                    tax_amount_currency=0,
+                    untaxed_amount=record.example_amount,
+                    untaxed_amount_currency=record.example_amount,
+                    sign=1)
+                for i, info_by_dates in enumerate(record._get_amount_by_date(terms, currency).values()):
+                    date = info_by_dates['date']
+                    discount_date = info_by_dates['discount_date']
+                    amount = info_by_dates['amount']
+                    discount_amount = info_by_dates['discounted_amount'] or 0.0
+                    example_preview += f"""
+                        <div style='margin-left: 20px;'>
+                            <b>{i+1}#</b>
+                            Installment of
+                            <b>{formatLang(self.env, amount, monetary=True, currency_obj=currency)}</b>
+                            on 
+                            <b style='color: #704A66;'>{date}</b>
+                    """
+                    if discount_date:
+                        example_preview += f"""
+                         (<b>{formatLang(self.env, discount_amount, monetary=True, currency_obj=currency)}</b> if paid before <b>{format_date(self.env, terms[i].get('discount_date'))}</b>)
+                    """
+                    example_preview += "</div>"
 
-    # #         record.example_preview = example_preview
-    # @api.model
-    # def _get_amount_by_date(self, terms, currency):
-    #     """
-    #     Returns a dictionary with the amount for each date of the payment term
-    #     (grouped by date, discounted percentage and discount last date,
-    #     sorted by date and ignoring null amounts).
-    #     """
-    #     terms = sorted(terms, key=lambda t: t.get('date'))
-    #     amount_by_date = {}
-    #     for term in terms:
-    #         key = frozendict({
-    #             'date': term['date'],
-    #             'discount_date': term['discount_date'],
-    #             'discount_percentage': term['discount_percentage'],
-    #         })
-    #         results = amount_by_date.setdefault(key, {
-    #             'date': format_date(self.env, term['date']),
-    #             'amount': 0.0,
-    #             'discounted_amount': 0.0,
-    #             'discount_date': format_date(self.env, term['discount_date']),
-    #         })
-    #         results['amount'] += term['foreign_amount']
-    #         results['discounted_amount'] += term['discount_amount_currency']
-    #     return amount_by_date
+            record.example_preview = example_preview
+    @api.model
+    def _get_amount_by_date(self, terms, currency):
+        """
+        Returns a dictionary with the amount for each date of the payment term
+        (grouped by date, discounted percentage and discount last date,
+        sorted by date and ignoring null amounts).
+        """
+        terms = sorted(terms, key=lambda t: t.get('date'))
+        amount_by_date = {}
+        for term in terms:
+            key = frozendict({
+                'date': term['date'],
+                'discount_date': term['discount_date'],
+                'discount_percentage': term['discount_percentage'],
+            })
+            results = amount_by_date.setdefault(key, {
+                'date': format_date(self.env, term['date']),
+                'amount': 0.0,
+                'discounted_amount': 0.0,
+                'discount_date': format_date(self.env, term['discount_date']),
+            })
+            results['amount'] += term['foreign_amount']
+            results['discounted_amount'] += term['discount_amount_currency']
+        return amount_by_date
 
     @api.constrains('line_ids')
     def _check_lines(self):
@@ -100,82 +100,82 @@ class AccountPaymentTerm(models.Model):
             if terms.line_ids.filtered(lambda r: r.value == 'fixed' and r.discount_percentage):
                 raise ValidationError(_("You can't mix fixed amount with early payment percentage"))
 
-    # def _compute_terms(self, date_ref, currency, company, tax_amount, tax_amount_currency, sign, untaxed_amount, untaxed_amount_currency):
-    #     """Get the distribution of this payment term.
-    #     :param date_ref: The move date to take into account
-    #     :param currency: the move's currency
-    #     :param company: the company issuing the move
-    #     :param tax_amount: the signed tax amount for the move
-    #     :param tax_amount_currency: the signed tax amount for the move in the move's currency
-    #     :param untaxed_amount: the signed untaxed amount for the move
-    #     :param untaxed_amount_currency: the signed untaxed amount for the move in the move's currency
-    #     :param sign: the sign of the move
-    #     :return (list<tuple<datetime.date,tuple<float,float>>>): the amount in the company's currency and
-    #         the document's currency, respectively for each required payment date
-    #     """
-    #     self.ensure_one()
-    #     company_currency = company.currency_id
-    #     tax_amount_left = tax_amount
-    #     tax_amount_currency_left = tax_amount_currency
-    #     untaxed_amount_left = untaxed_amount
-    #     untaxed_amount_currency_left = untaxed_amount_currency
-    #     total_amount = tax_amount + untaxed_amount
-    #     total_amount_currency = tax_amount_currency + untaxed_amount_currency
-    #     result = []
+    def _compute_terms(self, date_ref, currency, company, tax_amount, tax_amount_currency, sign, untaxed_amount, untaxed_amount_currency):
+        """Get the distribution of this payment term.
+        :param date_ref: The move date to take into account
+        :param currency: the move's currency
+        :param company: the company issuing the move
+        :param tax_amount: the signed tax amount for the move
+        :param tax_amount_currency: the signed tax amount for the move in the move's currency
+        :param untaxed_amount: the signed untaxed amount for the move
+        :param untaxed_amount_currency: the signed untaxed amount for the move in the move's currency
+        :param sign: the sign of the move
+        :return (list<tuple<datetime.date,tuple<float,float>>>): the amount in the company's currency and
+            the document's currency, respectively for each required payment date
+        """
+        self.ensure_one()
+        company_currency = company.currency_id
+        tax_amount_left = tax_amount
+        tax_amount_currency_left = tax_amount_currency
+        untaxed_amount_left = untaxed_amount
+        untaxed_amount_currency_left = untaxed_amount_currency
+        total_amount = tax_amount + untaxed_amount
+        total_amount_currency = tax_amount_currency + untaxed_amount_currency
+        result = []
 
-    #     for line in self.line_ids.sorted(lambda line: line.value == 'balance'):
-    #         term_vals = {
-    #             'date': line._get_due_date(date_ref),
-    #             'has_discount': line.discount_percentage,
-    #             'discount_date': None,
-    #             'discount_amount_currency': 0.0,
-    #             'discount_balance': 0.0,
-    #             'discount_percentage': line.discount_percentage,
-    #         }
+        for line in self.line_ids.sorted(lambda line: line.value == 'balance'):
+            term_vals = {
+                'date': line._get_due_date(date_ref),
+                'has_discount': line.discount_percentage,
+                'discount_date': None,
+                'discount_amount_currency': 0.0,
+                'discount_balance': 0.0,
+                'discount_percentage': line.discount_percentage,
+            }
 
-    #         if line.value == 'fixed':
-    #             term_vals['company_amount'] = sign * company_currency.round(line.value_amount)
-    #             term_vals['foreign_amount'] = sign * currency.round(line.value_amount)
-    #             company_proportion = tax_amount/untaxed_amount if untaxed_amount else 1
-    #             foreign_proportion = tax_amount_currency/untaxed_amount_currency if untaxed_amount_currency else 1
-    #             line_tax_amount = company_currency.round(line.value_amount * company_proportion) * sign
-    #             line_tax_amount_currency = currency.round(line.value_amount * foreign_proportion) * sign
-    #             line_untaxed_amount = term_vals['company_amount'] - line_tax_amount
-    #             line_untaxed_amount_currency = term_vals['foreign_amount'] - line_tax_amount_currency
-    #         elif line.value == 'percent':
-    #             term_vals['company_amount'] = company_currency.round(total_amount * (line.value_amount / 100.0))
-    #             term_vals['foreign_amount'] = currency.round(total_amount_currency * (line.value_amount / 100.0))
-    #             line_tax_amount = company_currency.round(tax_amount * (line.value_amount / 100.0))
-    #             line_tax_amount_currency = currency.round(tax_amount_currency * (line.value_amount / 100.0))
-    #             line_untaxed_amount = term_vals['company_amount'] - line_tax_amount
-    #             line_untaxed_amount_currency = term_vals['foreign_amount'] - line_tax_amount_currency
-    #         else:
-    #             line_tax_amount = line_tax_amount_currency = line_untaxed_amount = line_untaxed_amount_currency = 0.0
+            if line.value == 'fixed':
+                term_vals['company_amount'] = sign * company_currency.round(line.value_amount)
+                term_vals['foreign_amount'] = sign * currency.round(line.value_amount)
+                company_proportion = tax_amount/untaxed_amount if untaxed_amount else 1
+                foreign_proportion = tax_amount_currency/untaxed_amount_currency if untaxed_amount_currency else 1
+                line_tax_amount = company_currency.round(line.value_amount * company_proportion) * sign
+                line_tax_amount_currency = currency.round(line.value_amount * foreign_proportion) * sign
+                line_untaxed_amount = term_vals['company_amount'] - line_tax_amount
+                line_untaxed_amount_currency = term_vals['foreign_amount'] - line_tax_amount_currency
+            elif line.value == 'percent':
+                term_vals['company_amount'] = company_currency.round(total_amount * (line.value_amount / 100.0))
+                term_vals['foreign_amount'] = currency.round(total_amount_currency * (line.value_amount / 100.0))
+                line_tax_amount = company_currency.round(tax_amount * (line.value_amount / 100.0))
+                line_tax_amount_currency = currency.round(tax_amount_currency * (line.value_amount / 100.0))
+                line_untaxed_amount = term_vals['company_amount'] - line_tax_amount
+                line_untaxed_amount_currency = term_vals['foreign_amount'] - line_tax_amount_currency
+            else:
+                line_tax_amount = line_tax_amount_currency = line_untaxed_amount = line_untaxed_amount_currency = 0.0
 
-    #         tax_amount_left -= line_tax_amount
-    #         tax_amount_currency_left -= line_tax_amount_currency
-    #         untaxed_amount_left -= line_untaxed_amount
-    #         untaxed_amount_currency_left -= line_untaxed_amount_currency
+            tax_amount_left -= line_tax_amount
+            tax_amount_currency_left -= line_tax_amount_currency
+            untaxed_amount_left -= line_untaxed_amount
+            untaxed_amount_currency_left -= line_untaxed_amount_currency
 
-    #         if line.value == 'balance':
-    #             term_vals['company_amount'] = tax_amount_left + untaxed_amount_left
-    #             term_vals['foreign_amount'] = tax_amount_currency_left + untaxed_amount_currency_left
-    #             line_tax_amount = tax_amount_left
-    #             line_tax_amount_currency = tax_amount_currency_left
-    #             line_untaxed_amount = untaxed_amount_left
-    #             line_untaxed_amount_currency = untaxed_amount_currency_left
+            if line.value == 'balance':
+                term_vals['company_amount'] = tax_amount_left + untaxed_amount_left
+                term_vals['foreign_amount'] = tax_amount_currency_left + untaxed_amount_currency_left
+                line_tax_amount = tax_amount_left
+                line_tax_amount_currency = tax_amount_currency_left
+                line_untaxed_amount = untaxed_amount_left
+                line_untaxed_amount_currency = untaxed_amount_currency_left
 
-    #         if line.discount_percentage:
-    #             if company.early_pay_discount_computation in ('excluded', 'mixed'):
-    #                 term_vals['discount_balance'] = company_currency.round(term_vals['company_amount'] - line_untaxed_amount * line.discount_percentage / 100.0)
-    #                 term_vals['discount_amount_currency'] = currency.round(term_vals['foreign_amount'] - line_untaxed_amount_currency * line.discount_percentage / 100.0)
-    #             else:
-    #                 term_vals['discount_balance'] = company_currency.round(term_vals['company_amount'] * (1 - (line.discount_percentage / 100.0)))
-    #                 term_vals['discount_amount_currency'] = currency.round(term_vals['foreign_amount'] * (1 - (line.discount_percentage / 100.0)))
-    #             term_vals['discount_date'] = date_ref + relativedelta(days=line.discount_days)
+            if line.discount_percentage:
+                if company.early_pay_discount_computation in ('excluded', 'mixed'):
+                    term_vals['discount_balance'] = company_currency.round(term_vals['company_amount'] - line_untaxed_amount * line.discount_percentage / 100.0)
+                    term_vals['discount_amount_currency'] = currency.round(term_vals['foreign_amount'] - line_untaxed_amount_currency * line.discount_percentage / 100.0)
+                else:
+                    term_vals['discount_balance'] = company_currency.round(term_vals['company_amount'] * (1 - (line.discount_percentage / 100.0)))
+                    term_vals['discount_amount_currency'] = currency.round(term_vals['foreign_amount'] * (1 - (line.discount_percentage / 100.0)))
+                term_vals['discount_date'] = date_ref + relativedelta(days=line.discount_days)
 
-    #         result.append(term_vals)
-    #     return result
+            result.append(term_vals)
+        return result
 
 
 class AccountPaymentTermLine(models.Model):
@@ -184,17 +184,13 @@ class AccountPaymentTermLine(models.Model):
     months = fields.Integer(string='Months', required=True, default=0)
     end_month = fields.Boolean(string='End of month', help="Switch to end of the month after having added months or days")
     discount_percentage = fields.Float(string='Discount %', help='Early Payment Discount granted for this line')
-    value = fields.Selection([
-            ('balance', 'Balance'),
-            ('percent', 'Percent'),
-            ('fixed', 'Fixed Amount')
-        ], string='Type', required=True, default='balance',
-        help="Select here the kind of valuation related to this payment terms line.")
-    days = fields.Integer(string='Number of Days', required=True, default=0)
+
 
     def _get_due_date(self, date_ref):
         self.ensure_one()
-        due_date = fields.Date.from_string(date_ref)
+        # fields.Date.from_string is deprecated in newer Odoo versions;
+        # fields.Date.to_date provides the same behavior for converting to a date.
+        due_date = fields.Date.to_date(date_ref)
         due_date += relativedelta(months=self.months)
         due_date += relativedelta(days=self.days)
         if self.end_month:
@@ -283,7 +279,10 @@ class SaleOrderTemplate(models.Model):
     reparieren_ersetzen_von_text = fields.Char(string="Reparieren / Ersetzen von", default="Reparieren / Ersetzen von")
     remove_order_existing_line = fields.Boolean(string="Remove Existing Line")
     pricelist_id = fields.Many2one(
-        'product.pricelist', string='Pricelist', help="If you change the pricelist, only newly added lines will be affected.")
+        'product.pricelist', string='Pricelist', check_company=True,  # Unrequired company
+        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        help="If you change the pricelist, only newly added lines will be affected.")
+
 
     @api.onchange('freier_text_block_id')
     def onchange_freier_text_block_id(self):
@@ -294,6 +293,26 @@ class SaleOrderTemplate(models.Model):
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
+    # Studio fields migrated to Python so they are available without Studio.
+    x_show_art_no = fields.Boolean(string="Show art-no")
+    x_show_art_nr = fields.Char(string="Show art-no")
+    x_studio_date_order = fields.Datetime(string="New Datum & Uhrzeit")
+    x_studio_lieferfrist = fields.Selection(
+        [
+            ('ca. 6 Wochen', 'ca. 6 Wochen'),
+            ('ca. 8 Wochen', 'ca. 8 Wochen'),
+            ('6 - 8 Wochen', '6 - 8 Wochen'),
+            ('8 - 10 Wochen', '8 - 10 Wochen'),
+            ('4 Wochen', '4 Wochen'),
+            ('ca. 4 Wochen, wird abgeholt in Uttigen', 'ca. 4 Wochen, wird abgeholt in Uttigen'),
+            ('ca. 4 Wochen, wird geliefert', 'ca. 4 Wochen, wird geliefert'),
+            ('ca. 3 bis 4 Wochen', 'ca. 3 bis 4 Wochen'),
+            ('4 - 6 Wochen', '4 - 6 Wochen'),
+        ],
+        string="Lieferfrist",
+    )
+    x_studio_garantievermerk = fields.Boolean(string="Garantievermerk")
+    x_studio_rabatt_anzeigen = fields.Boolean(string="Rabatt anzeigen")
     termin = fields.Boolean(string="Show Termin")
     termin_sep = fields.Char(default="Termin")
     termin_label = fields.Char(default="Termin:")
@@ -351,9 +370,7 @@ class SaleOrder(models.Model):
     x_studio_reparieren_ersetzen_von = fields.Boolean(string="Reparieren / Ersetzen von")
     x_studio_lieferadresse_drucken = fields.Boolean(string="Lief-Adr. drucken")
     x_studio_rechnungsadresse_drucken = fields.Boolean(string="Rech-Adr. drucken")
-    x_studio_lieferfrist = fields.Selection([('ca. 6 Wochen ', 'ca. 6 Wochen'), ('ca. 8 Wochen  ', 'ca. 8 Wochen'), ('6 - 8 Wochen', '6 - 8 Wochen'), ('8 - 10 Wochen', '8 - 10 Wochen'), ('4 Wochen', '4 Wochen'), ('ca. 4 Wochen, wird abgeholt in Uttigen', 'ca. 4 Wochen, wird abgeholt in Uttigen'), ('ca. 4 Wochen, wird geliefert', 'ca. 4 Wochen, wird geliefert'), ('ca. 3 bis 4 Wochen', 'ca. 3 bis 4 Wochen'), ('4 - 6 Wochen', '4 - 6 Wochen')])
-    x_show_art_no = fields.Boolean(string="Show art-nr")
-    x_show_art_nr = fields.Char(string="Show art-no")
+
 
     @api.onchange('freier_text_block_id')
     def onchange_freier_text_block_id(self):
@@ -368,8 +385,8 @@ class SaleOrder(models.Model):
                 record.abholung_text = "ab Werkstatt, Uttigen"
             if record.preise_sonderfarben:
                 record.preise_sonderfarben_text = "gültig 4 Wochen"
-            # if record.x_studio_preise_inkl_montage:
-            #     record.preise_inkl_montage_text = "inkl. Montage"
+            if record.x_studio_preise_inkl_montage:
+                record.preise_inkl_montage_text = "inkl. Montage"
             if record.preise_exkl_montage:
                 record.preise_exkl_montage_text = "exkl. Montage"
             if record.rabatt_5:
@@ -388,80 +405,72 @@ class SaleOrder(models.Model):
                 record.garantie_wiederverkaufer_text = "3 Jahre Garantie auf Produkte (exkl. auf Gewebe) Schäden durch unsachgemässe Montage sind nicht garantieberechtigt"
 
     @api.onchange('sale_order_template_id')
-    def onchange_sale_order_template_id(self):
-        #res = super(SaleOrder, self).onchange_sale_order_template_id()
+    def _onchange_sale_order_template_id(self):
+        """Adaptation of Odoo 19.0 logic to keep Baur-specific behaviour.
 
+        - Uses the 19.0 way of generating order lines from the template
+          (line._prepare_order_line_values()).
+        - Respects the custom 'remove_order_existing_line' flag from the template:
+          when true, existing lines are cleared; when false, new lines are appended.
+        - Keeps copying the Baur-specific fields from the template to the order.
+        """
         if not self.sale_order_template_id:
-            #self.require_signature = self.require_signature()
-            #self.require_payment = self._get_default_require_payment()
             return
 
         template = self.sale_order_template_id.with_context(lang=self.partner_id.lang)
 
-        # --- first, process the list of products from the template
-        order_lines = []
-        if not self.sale_order_template_id.remove_order_existing_line:
-            order_lines = []
-        else:
-            order_lines = [(5, 0, 0)]
+        # --- process the list of products from the template
+        order_lines_data = []
+        remove_existing = getattr(self.sale_order_template_id, 'remove_order_existing_line', False)
+
+        if remove_existing:
+            # Clear existing order lines first, then add template lines.
+            order_lines_data.append(Command.clear())
 
         for line in template.sale_order_template_line_ids:
-            data = self._compute_line_data_for_template_change(line)
+            order_lines_data.append(Command.create(line._prepare_order_line_values()))
 
-            if line.product_id:
-                price = line.product_id.lst_price
-                discount = 0
+        # When we are replacing all lines, keep the "sequence hack" from Odoo 19
+        # to avoid re-sequencing issues between pages.
+        if remove_existing and len(order_lines_data) >= 2:
+            order_lines_data[1][2]['sequence'] = -99
 
-                if self.pricelist_id:
-                    pricelist_price = self.pricelist_id.with_context(uom=line.product_uom_id.id).get_product_price(line.product_id, 1, False)
+        if remove_existing:
+            self.order_line = order_lines_data
+        else:
+            # Append new lines on top of existing ones.
+            self.order_line = self.order_line + order_lines_data
 
-                    if self.pricelist_id.discount_policy == 'without_discount' and price:
-                        discount = max(0, (price - pricelist_price) * 100 / price)
-                    else:
-                        price = pricelist_price
-
-                data.update({
-                    'price_unit': price,
-                    'discount': discount,
-                    'product_uom_qty': line.product_uom_qty,
-                    'product_id': line.product_id.id,
-                    'product_uom': line.product_uom_id.id,
-                    'customer_lead': self._get_customer_lead(line.product_id.product_tmpl_id),
-                })
-
-            order_lines.append((0, 0, data))
-
-        self.order_line = order_lines
+        # Ensure taxes are recomputed on the modified lines.
         self.order_line._compute_tax_id()
 
-        # then, process the list of optional products from the template
-        option_lines = []
-        for option in template.sale_order_template_option_ids:
-            data = self._compute_option_data_for_template_change(option)
-            option_lines.append((0, 0, data))
+        # --- optional products from the template (only if those fields exist in this DB)
+        if hasattr(self, 'sale_order_option_ids') and hasattr(template, 'sale_order_template_option_ids'):
+            option_lines = []
+            for option in template.sale_order_template_option_ids:
+                # In 19.0 there is no public helper like _compute_option_data_for_template_change,
+                # so we map the most important fields directly if they exist.
+                vals = {}
+                for field_name in ['name', 'discount', 'sequence', 'product_id', 'quantity', 'price_unit', 'uom_id', 'line_id']:
+                    if field_name in option._fields:
+                        value = getattr(option, field_name)
+                        # Many2one fields must use their id in x2many commands.
+                        if field_name in ['product_id', 'uom_id', 'line_id']:
+                            value = value.id
+                        vals[field_name] = value
+                option_lines.append((0, 0, vals))
+            self.sale_order_option_ids = option_lines
 
-        self.sale_order_option_ids = option_lines
-
-        if template.number_of_days > 0:
-            self.validity_date = fields.Date.context_today(self) + timedelta(template.number_of_days)
-
-        self.require_signature = template.require_signature
-        self.require_payment = template.require_payment
-
-        if not is_html_empty(template.note):
-            self.note = template.note
-
-
+        # --- copy Baur-specific fields from the template to the order
         if self.sale_order_template_id:
-            template = self.sale_order_template_id
             if template.pricelist_id:
                 self.pricelist_id = template.pricelist_id.id
-            # self.x_studio_lieferfrist = template.x_studio_lieferfrist
-            # self.x_studio_preise_inkl_montage = template.x_studio_preise_inkl_montage
-            # if template.x_studio_preise_inkl_montage:
-            #     self.preise_inkl_montage_text = template.preise_inkl_montage_text
-            #     self.preise_inkl_montage_label = template.preise_inkl_montage_label
-            #     self.preise_inkl_montage_sep = template.preise_inkl_montage_sep
+            self.x_studio_lieferfrist = template.x_studio_lieferfrist
+            self.x_studio_preise_inkl_montage = template.x_studio_preise_inkl_montage
+            if template.x_studio_preise_inkl_montage:
+                self.preise_inkl_montage_text = template.preise_inkl_montage_text
+                self.preise_inkl_montage_label = template.preise_inkl_montage_label
+                self.preise_inkl_montage_sep = template.preise_inkl_montage_sep
             self.termin = template.termin
             if template.termin:
                 self.termin_text = template.termin_text
@@ -519,15 +528,14 @@ class SaleOrder(models.Model):
                 self.garantie_wiederverkaufer_sep = template.garantie_wiederverkaufer_sep
             self.freier_text_block_id = template.freier_text_block_id
             self.freier_text = template.freier_text
-            # self.x_studio_ausmessen_liefern_und_montieren = template.ausmessen_liefern_und_montieren
-            # self.x_studio_reparieren_ersetzen_von = template.reparieren_ersetzen_von
-        #return res
+            self.x_studio_ausmessen_liefern_und_montieren = template.ausmessen_liefern_und_montieren
+            self.x_studio_reparieren_ersetzen_von = template.reparieren_ersetzen_von
 
     def _create_invoices(self, grouped=False, final=False, date=None):
         res = super(SaleOrder, self)._create_invoices(grouped=grouped, final=final, date=date)
-        # res.x_studio_ausmessen_liefern_und_montieren = self.x_studio_ausmessen_liefern_und_montieren if self.x_studio_ausmessen_liefern_und_montieren else None
+        res.x_studio_ausmessen_liefern_und_montieren = self.x_studio_ausmessen_liefern_und_montieren if self.x_studio_ausmessen_liefern_und_montieren else None
         res.ausmessen_liefern_und_montieren_text = self.ausmessen_liefern_und_montieren_text if self.ausmessen_liefern_und_montieren_text else None
-        # res.x_studio_reparieren_ersetzen_von = self.x_studio_reparieren_ersetzen_von if self.x_studio_reparieren_ersetzen_von else None
+        res.x_studio_reparieren_ersetzen_von = self.x_studio_reparieren_ersetzen_von if self.x_studio_reparieren_ersetzen_von else None
         res.reparieren_ersetzen_von_text = self.reparieren_ersetzen_von_text if self.reparieren_ersetzen_von_text else None
         res.garantie = self.garantie if self.garantie else None
         res.garantie_sep = self.garantie_sep if self.garantie_sep else None
@@ -545,20 +553,34 @@ class SaleOrder(models.Model):
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
-    x_studio_farbe = fields.Many2one('x_farben', string="Color")
-    x_studio_groesse = fields.Char(string="Grösse")
+    x_studio_farbe = fields.Many2one("x_farben", string="Farbe")
+    x_studio_groesse = fields.Char("Grösse")
 
     @api.onchange('product_id')
-    def product_id_change(self):
-        if self.product_id:
-            if self.product_id.farbe:
-                self.x_studio_farbe = self.product_id.farbe
-            if self.product_id.grosse:
-                self.x_studio_groesse = self.product_id.grosse
+    def _onchange_baur_product_id(self):
+        """When the product changes, copy Farbe/Grösse from the product.
+
+        In Odoo 19.0 the core onchange is implemented in other methods
+        (e.g. ``_onchange_product_id``), so we don't call ``super()`` here;
+        we only extend the behavior by setting our custom fields.
+        """
+        for line in self:
+            if not line.product_id:
+                continue
+            if hasattr(line.product_id, 'farbe') and line.product_id.farbe:
+                line.x_studio_farbe = line.product_id.farbe
+            if hasattr(line.product_id, 'grosse') and line.product_id.grosse:
+                line.x_studio_groesse = line.product_id.grosse
 
 
 class AccountMove(models.Model):
     _inherit = "account.move"
+
+    # Fields mirrored from Studio / sale order for report compatibility.
+    x_show_art_no = fields.Boolean(string="Show art-no")
+    x_show_art_nr = fields.Char(string="Show art-no")
+    x_studio_garantievermerk = fields.Boolean(string="Garantievermerk")
+    x_studio_rabatt_anzeigen = fields.Boolean(string="Rabatt anzeigen")
 
     garantie = fields.Boolean(string="Show Garantie")
     garantie_sep = fields.Char(default="Garantie")
@@ -574,8 +596,7 @@ class AccountMove(models.Model):
     reparieren_ersetzen_von_text = fields.Char(string="Reparieren / Ersetzen von", default="Reparieren / Ersetzen von")
     freier_text_block_id = fields.Many2one('text.blocks', 'Freier Text Block')
     freier_text = fields.Html('Freier Text')
-    x_show_art_no = fields.Boolean(string="Show art-nr")
-    x_studio_lieferadresse_drucken = fields.Boolean(string="Lief-Adr. drucken")
+
     payment_communication = fields.Boolean(string="Show Payment Communication")
     payment_communication_sep = fields.Char(string="Payment Communication", default="Payment Communication")
     payment_communication_text = fields.Text(string="Show Payment Communication Text", default="Bitte benutzen Sie den beigefügten QR-Einzahlungsschein für Ihre Zahlung:")
@@ -584,22 +605,3 @@ class AccountMove(models.Model):
     def onchange_freier_text_block_id(self):
         if self.freier_text_block_id:
             self.freier_text = self.freier_text_block_id.text_block
-
-
-class AccountMoveLine(models.Model):
-    _inherit = "account.move.line"
-
-    x_studio_groesse = fields.Char(string="Grösse")
-    x_studio_farbe = fields.Many2one('x_farben', string="Color")
-
-
-class ResPartner(models.Model):
-    _inherit = "res.partner"
-
-    x_studio_name2 = fields.Char(string="Name 2. Person")
-
-
-class Users(models.Model):
-    _inherit = "res.users"
-
-    x_studio_initialen = fields.Char(string="Initialen")
